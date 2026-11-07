@@ -1,0 +1,1605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RunoPoly – Run. Claim. Own.</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --bg:          #0D0F14;
+    --bg2:         #141720;
+    --bg3:         #1C2030;
+    --border:      #2A2F40;
+    --lime:        #B8FF00;
+    --lime-dim:    #7DB800;
+    --text:        #E8EAF0;
+    --text-muted:  #6B7280;
+    --text-dim:    #9CA3AF;
+    --error:       #FF4D6A;
+    --success:     #00D68F;
+    --warn:        #FFB020;
+
+    /* Territory palette – 8 users */
+    --c0: #4F8EF7; --c0a: rgba(79,142,247,0.25);
+    --c1: #FF6B6B; --c1a: rgba(255,107,107,0.25);
+    --c2: #00D68F; --c2a: rgba(0,214,143,0.25);
+    --c3: #FFB020; --c3a: rgba(255,176,32,0.25);
+    --c4: #B8FF00; --c4a: rgba(184,255,0,0.25);
+    --c5: #C084FC; --c5a: rgba(192,132,252,0.25);
+    --c6: #22D3EE; --c6a: rgba(34,211,238,0.25);
+    --c7: #F97316; --c7a: rgba(249,115,22,0.25);
+
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%; width: 100%;
+    font-family: 'Space Grotesk', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+  }
+
+  /* ── AUTH SCREEN ─────────────────────────────────────────── */
+  #auth-screen {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column;
+    gap: 0;
+  }
+  .auth-glow {
+    position: absolute; top: -120px; left: 50%; transform: translateX(-50%);
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(184,255,0,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .auth-card {
+    position: relative;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 48px 44px;
+    width: 420px;
+    max-width: 95vw;
+    box-shadow: var(--shadow);
+  }
+  .auth-logo {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 36px;
+  }
+  .auth-logo-icon {
+    width: 40px; height: 40px;
+    background: var(--lime);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .auth-logo-text {
+    font-size: 26px; font-weight: 700; letter-spacing: -0.5px;
+  }
+  .auth-logo-text span { color: var(--lime); }
+  .auth-tagline {
+    font-size: 13px; color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .auth-title {
+    font-size: 22px; font-weight: 600;
+    margin-bottom: 28px;
+  }
+  .auth-tabs {
+    display: flex; gap: 2px;
+    background: var(--bg3); border-radius: var(--radius-sm);
+    padding: 3px; margin-bottom: 28px;
+  }
+  .auth-tab {
+    flex: 1; padding: 9px;
+    border: none; background: transparent;
+    color: var(--text-muted); font-family: inherit;
+    font-size: 14px; font-weight: 500;
+    border-radius: 5px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .auth-tab.active {
+    background: var(--bg2);
+    color: var(--text);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+  .field { margin-bottom: 16px; }
+  .field label {
+    display: block; font-size: 12px; font-weight: 600;
+    color: var(--text-dim); text-transform: uppercase;
+    letter-spacing: 0.06em; margin-bottom: 6px;
+  }
+  .field input {
+    width: 100%; padding: 11px 14px;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-family: inherit; font-size: 15px;
+    transition: border-color 0.15s;
+    outline: none;
+  }
+  .field input:focus { border-color: var(--lime); }
+  .field input::placeholder { color: var(--text-muted); }
+  .btn-primary {
+    width: 100%; padding: 13px;
+    background: var(--lime); border: none;
+    border-radius: var(--radius-sm); color: #0D0F14;
+    font-family: inherit; font-size: 15px; font-weight: 700;
+    cursor: pointer; margin-top: 4px;
+    transition: opacity 0.15s, transform 0.1s;
+    letter-spacing: 0.01em;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-primary:active { transform: scale(0.99); }
+  .auth-error {
+    color: var(--error); font-size: 13px;
+    margin-top: 10px; display: none;
+  }
+  .auth-demo-hint {
+    margin-top: 20px; padding: 14px;
+    background: var(--bg3); border-radius: var(--radius-sm);
+    border-left: 3px solid var(--lime);
+  }
+  .auth-demo-hint p {
+    font-size: 12px; color: var(--text-muted); margin-bottom: 4px;
+  }
+  .auth-demo-hint strong { color: var(--text-dim); }
+
+  /* ── MAIN LAYOUT ──────────────────────────────────────────── */
+  #app { display: none; height: 100vh; width: 100%; flex-direction: column; }
+  #app.visible { display: flex; }
+
+  /* TOPBAR */
+  #topbar {
+    height: 58px; flex-shrink: 0;
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 20px; gap: 16px; z-index: 100;
+  }
+  .topbar-logo {
+    font-size: 20px; font-weight: 700; letter-spacing: -0.4px;
+    white-space: nowrap;
+  }
+  .topbar-logo span { color: var(--lime); }
+  .topbar-sep {
+    width: 1px; height: 28px; background: var(--border); flex-shrink: 0;
+  }
+  #user-badge {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .user-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--lime); flex-shrink: 0;
+  }
+  #user-name-display {
+    font-size: 14px; font-weight: 600;
+  }
+  .topbar-spacer { flex: 1; }
+  .topbar-stats {
+    display: flex; gap: 20px; align-items: center;
+  }
+  .tstat {
+    text-align: right;
+  }
+  .tstat-label {
+    font-size: 10px; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .tstat-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px; font-weight: 600; color: var(--lime);
+  }
+  #btn-logout {
+    padding: 7px 14px;
+    background: transparent; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text-muted);
+    font-family: inherit; font-size: 13px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  #btn-logout:hover { border-color: var(--error); color: var(--error); }
+
+  /* MAIN AREA */
+  #main {
+    display: flex; flex: 1; overflow: hidden;
+  }
+
+  /* SIDEBAR */
+  #sidebar {
+    width: 300px; flex-shrink: 0;
+    background: var(--bg2); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    overflow: hidden; z-index: 10;
+  }
+  .sidebar-section {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .sidebar-section-title {
+    font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--text-muted); margin-bottom: 14px;
+  }
+
+  /* RUN CONTROLS */
+  #run-status {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 14px;
+  }
+  #status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--text-muted);
+    transition: background 0.3s;
+  }
+  #status-dot.running {
+    background: var(--success);
+    box-shadow: 0 0 8px var(--success);
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  #status-text {
+    font-size: 13px; font-weight: 500; color: var(--text-dim);
+  }
+
+  .run-metrics {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px; margin-bottom: 16px;
+  }
+  .run-metric {
+    background: var(--bg3);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+  }
+  .run-metric-label {
+    font-size: 10px; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .run-metric-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 17px; font-weight: 600;
+    color: var(--text); margin-top: 2px;
+  }
+
+  .run-btns { display: flex; flex-direction: column; gap: 8px; }
+  .btn-run {
+    padding: 11px 16px;
+    border-radius: var(--radius-sm);
+    font-family: inherit; font-size: 14px; font-weight: 600;
+    cursor: pointer; border: none;
+    transition: all 0.15s; text-align: center;
+  }
+  #btn-start {
+    background: var(--lime); color: #0D0F14;
+  }
+  #btn-start:hover { opacity: 0.9; }
+  #btn-stop {
+    background: transparent; color: var(--error);
+    border: 1px solid var(--error);
+    display: none;
+  }
+  #btn-stop:hover { background: rgba(255,77,106,0.1); }
+  #btn-sim {
+    background: transparent; color: var(--text-muted);
+    border: 1px solid var(--border);
+    font-size: 12px;
+  }
+  #btn-sim:hover { border-color: var(--lime); color: var(--lime); }
+
+  /* GPS LOG */
+  #gps-log {
+    flex: 1; overflow-y: auto;
+    padding: 0;
+  }
+  #gps-log::-webkit-scrollbar { width: 4px; }
+  #gps-log::-webkit-scrollbar-track { background: transparent; }
+  #gps-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .gps-header {
+    padding: 14px 20px 8px;
+    font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .gps-point {
+    display: flex; align-items: center;
+    padding: 7px 20px; gap: 10px;
+    border-bottom: 1px solid rgba(42,47,64,0.5);
+    animation: slideIn 0.2s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .gps-idx {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--text-muted);
+    width: 22px; flex-shrink: 0;
+  }
+  .gps-coord {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--text-dim);
+    flex: 1;
+  }
+  .gps-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--text-muted);
+  }
+  .gps-empty {
+    padding: 24px 20px;
+    font-size: 13px; color: var(--text-muted);
+    text-align: center;
+  }
+
+  /* TERRITORIES PANEL */
+  #territories-panel {
+    background: var(--bg2); border-right: 1px solid var(--border);
+    width: 0; overflow: hidden; transition: width 0.3s ease;
+    display: flex; flex-direction: column;
+  }
+  #territories-panel.open { width: 260px; }
+  .territory-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .territory-item:hover { background: var(--bg3); }
+  .territory-header { display: flex; align-items: center; gap: 8px; }
+  .territory-color {
+    width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0;
+  }
+  .territory-name {
+    font-size: 13px; font-weight: 600; flex: 1;
+  }
+  .territory-area {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--text-muted);
+  }
+  .territory-owner {
+    font-size: 11px; color: var(--text-muted);
+    margin-top: 3px; padding-left: 20px;
+  }
+  .territory-area-big {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--lime);
+    margin-top: 2px; padding-left: 20px;
+  }
+
+  /* MAP */
+  #map-container {
+    flex: 1; position: relative;
+  }
+  #map { width: 100%; height: 100%; }
+
+  /* MAP TOOLBAR */
+  #map-toolbar {
+    position: absolute; top: 16px; right: 16px; z-index: 500;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .map-btn {
+    width: 36px; height: 36px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 16px;
+    transition: all 0.15s; color: var(--text);
+    user-select: none;
+  }
+  .map-btn:hover { border-color: var(--lime); color: var(--lime); }
+  .map-btn.active { border-color: var(--lime); background: rgba(184,255,0,0.1); }
+
+  /* TOAST */
+  #toast-container {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 9000;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    pointer-events: none;
+  }
+  .toast {
+    padding: 12px 22px;
+    border-radius: 40px;
+    font-size: 14px; font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    animation: toastIn 0.25s ease, toastOut 0.3s ease 2.7s forwards;
+    white-space: nowrap;
+  }
+  .toast.success { background: var(--success); color: #0D0F14; }
+  .toast.info { background: var(--bg3); border: 1px solid var(--border); color: var(--text); }
+  .toast.warn { background: var(--warn); color: #0D0F14; }
+  .toast.error { background: var(--error); color: #fff; }
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateY(12px) scale(0.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes toastOut {
+    from { opacity: 1; }
+    to   { opacity: 0; transform: translateY(8px); }
+  }
+
+  /* CLAIM MODAL */
+  #claim-modal {
+    position: fixed; inset: 0; z-index: 8000;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center;
+  }
+  #claim-modal.open { display: flex; }
+  .modal-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 16px; padding: 36px 40px;
+    width: 420px; max-width: 95vw;
+    box-shadow: var(--shadow);
+    animation: modalIn 0.2s ease;
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.96) translateY(8px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .modal-icon { font-size: 40px; margin-bottom: 16px; }
+  .modal-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+  .modal-sub { font-size: 14px; color: var(--text-muted); margin-bottom: 24px; }
+  .modal-stats {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px; margin-bottom: 28px;
+  }
+  .modal-stat {
+    background: var(--bg3); border-radius: var(--radius-sm); padding: 12px;
+    text-align: center;
+  }
+  .modal-stat-label {
+    font-size: 10px; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.07em;
+  }
+  .modal-stat-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px; font-weight: 700; color: var(--lime);
+    margin-top: 4px;
+  }
+  .modal-btns { display: flex; gap: 10px; }
+  .modal-btn-cancel {
+    flex: 1; padding: 12px;
+    background: transparent; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text-muted);
+    font-family: inherit; font-size: 14px; font-weight: 600;
+    cursor: pointer;
+  }
+  .modal-btn-cancel:hover { border-color: var(--text-muted); color: var(--text); }
+  .modal-btn-claim {
+    flex: 2; padding: 12px;
+    background: var(--lime); border: none;
+    border-radius: var(--radius-sm); color: #0D0F14;
+    font-family: inherit; font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: opacity 0.15s;
+  }
+  .modal-btn-claim:hover { opacity: 0.9; }
+
+  /* HISTORY */
+  #history-panel {
+    position: fixed; inset: 0; z-index: 7000;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+    display: none; align-items: flex-end; justify-content: center;
+  }
+  #history-panel.open { display: flex; }
+  .history-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 16px 16px 0 0;
+    width: 100%; max-width: 640px;
+    padding: 28px 32px 32px;
+    max-height: 60vh; overflow-y: auto;
+  }
+  .history-title {
+    font-size: 18px; font-weight: 700; margin-bottom: 20px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .history-close {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 50%; width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 14px; color: var(--text-muted);
+  }
+  .history-close:hover { color: var(--text); }
+  .history-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+  }
+  .history-icon { font-size: 20px; }
+  .history-info { flex: 1; }
+  .history-info-title { font-size: 13px; font-weight: 600; }
+  .history-info-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .history-badge {
+    padding: 4px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+    background: rgba(184,255,0,0.15); color: var(--lime);
+  }
+  .history-badge.reclaimed {
+    background: rgba(255,176,32,0.15); color: var(--warn);
+  }
+
+  /* LEADERBOARD */
+  #leaderboard-panel {
+    position: absolute; top: 16px; left: 16px; z-index: 500;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px;
+    width: 220px;
+    display: none;
+    box-shadow: var(--shadow);
+  }
+  #leaderboard-panel.visible { display: block; }
+  .lb-title {
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 12px;
+  }
+  .lb-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 0; border-bottom: 1px solid rgba(42,47,64,0.6);
+  }
+  .lb-row:last-child { border: none; }
+  .lb-rank {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--text-muted); width: 18px;
+  }
+  .lb-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .lb-name { font-size: 13px; font-weight: 500; flex: 1; }
+  .lb-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--lime);
+  }
+
+  /* MISC UTILS */
+  .hidden { display: none !important; }
+
+  /* LEAFLET OVERRIDES */
+  .leaflet-container { background: #1a1d28; }
+  .leaflet-control-zoom a {
+    background: var(--bg2) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+  }
+  .leaflet-control-zoom a:hover { background: var(--bg3) !important; }
+
+  /* GPS animation polyline */
+  .run-path { stroke-dasharray: 6 4; animation: dashMove 1s linear infinite; }
+  @keyframes dashMove {
+    to { stroke-dashoffset: -20; }
+  }
+
+  /* Responsive tweaks */
+  @media (max-width: 700px) {
+    #sidebar { width: 260px; }
+    #territories-panel.open { width: 220px; }
+    .topbar-stats { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     AUTH SCREEN
+══════════════════════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-glow"></div>
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">🏃</div>
+      <div class="auth-logo-text">Runo<span>Poly</span></div>
+    </div>
+    <p class="auth-tagline">Run · Claim · Own</p>
+    <h2 class="auth-title" id="auth-title">Welcome back</h2>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login')">Login</button>
+      <button class="auth-tab" onclick="switchTab('register')">Register</button>
+    </div>
+
+    <div id="login-form">
+      <div class="field">
+        <label>Username</label>
+        <input type="text" id="login-user" placeholder="Enter username" />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="login-pass" placeholder="Enter password" />
+      </div>
+      <button class="btn-primary" onclick="handleLogin()">Login</button>
+    </div>
+
+    <div id="register-form" class="hidden">
+      <div class="field">
+        <label>Username</label>
+        <input type="text" id="reg-user" placeholder="Choose a username" />
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="reg-email" placeholder="your@email.com" />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="reg-pass" placeholder="Choose a password" />
+      </div>
+      <button class="btn-primary" onclick="handleRegister()">Create Account</button>
+    </div>
+
+    <p class="auth-error" id="auth-error"></p>
+
+    <div class="auth-demo-hint">
+      <p>🔑 Demo accounts ready to use:</p>
+      <p><strong>alice / alice123</strong> &nbsp;·&nbsp; <strong>bob / bob123</strong> &nbsp;·&nbsp; <strong>carol / carol123</strong></p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MAIN APP
+══════════════════════════════════════ -->
+<div id="app">
+  <!-- TOPBAR -->
+  <div id="topbar">
+    <div class="topbar-logo">Runo<span>Poly</span></div>
+    <div class="topbar-sep"></div>
+    <div id="user-badge">
+      <div class="user-dot" id="user-color-dot"></div>
+      <div id="user-name-display">—</div>
+    </div>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-stats">
+      <div class="tstat">
+        <div class="tstat-label">Territories</div>
+        <div class="tstat-val" id="stat-territories">0</div>
+      </div>
+      <div class="tstat">
+        <div class="tstat-label">Total km</div>
+        <div class="tstat-val" id="stat-km">0.0</div>
+      </div>
+      <div class="tstat">
+        <div class="tstat-label">Runs</div>
+        <div class="tstat-val" id="stat-runs">0</div>
+      </div>
+    </div>
+    <button id="btn-logout" onclick="logout()">Logout</button>
+  </div>
+
+  <!-- MAIN AREA -->
+  <div id="main">
+
+    <!-- SIDEBAR: Controls + GPS Log -->
+    <div id="sidebar">
+
+      <!-- Run Controls -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Run Session</div>
+        <div id="run-status">
+          <div id="status-dot"></div>
+          <div id="status-text">Ready to run</div>
+        </div>
+        <div class="run-metrics">
+          <div class="run-metric">
+            <div class="run-metric-label">Distance</div>
+            <div class="run-metric-val" id="metric-dist">0.00 km</div>
+          </div>
+          <div class="run-metric">
+            <div class="run-metric-label">Duration</div>
+            <div class="run-metric-val" id="metric-time">00:00</div>
+          </div>
+          <div class="run-metric">
+            <div class="run-metric-label">Points</div>
+            <div class="run-metric-val" id="metric-pts">0</div>
+          </div>
+          <div class="run-metric">
+            <div class="run-metric-label">Pace</div>
+            <div class="run-metric-val" id="metric-pace">—</div>
+          </div>
+        </div>
+        <div class="run-btns">
+          <button class="btn-run" id="btn-start" onclick="startRun()">▶ Start Run</button>
+          <button class="btn-run" id="btn-stop" onclick="stopRun()">■ End Run &amp; Claim</button>
+          <button class="btn-run" id="btn-sim" onclick="simulateRun()">⟳ Simulate GPS Loop</button>
+        </div>
+      </div>
+
+      <!-- GPS Coordinate Log -->
+      <div class="gps-header">GPS Coordinate Log</div>
+      <div id="gps-log">
+        <div class="gps-empty" id="gps-empty">
+          Start a run to begin logging GPS points
+        </div>
+      </div>
+    </div>
+
+    <!-- TERRITORIES PANEL -->
+    <div id="territories-panel">
+      <div style="padding: 16px; border-bottom: 1px solid var(--border);">
+        <div class="sidebar-section-title" style="margin:0">Claimed Territories</div>
+      </div>
+      <div id="territory-list" style="overflow-y:auto; flex:1;"></div>
+    </div>
+
+    <!-- MAP -->
+    <div id="map-container">
+      <div id="map"></div>
+
+      <!-- Map toolbar -->
+      <div id="map-toolbar">
+        <div class="map-btn" title="Toggle territories panel" onclick="toggleTerritoriesPanel()" id="btn-toggle-terr">🗺</div>
+        <div class="map-btn" title="Show leaderboard" onclick="toggleLeaderboard()" id="btn-toggle-lb">🏆</div>
+        <div class="map-btn" title="Show run history" onclick="showHistory()">📋</div>
+        <div class="map-btn" title="Center map on my location" onclick="centerMap()">📍</div>
+      </div>
+
+      <!-- Leaderboard overlay -->
+      <div id="leaderboard-panel">
+        <div class="lb-title">🏆 Leaderboard</div>
+        <div id="lb-rows"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CLAIM MODAL -->
+<div id="claim-modal">
+  <div class="modal-card">
+    <div class="modal-icon" id="modal-icon">🎉</div>
+    <div class="modal-title" id="modal-title">Territory Claimed!</div>
+    <div class="modal-sub" id="modal-sub">Your loop has been validated.</div>
+    <div class="modal-stats">
+      <div class="modal-stat">
+        <div class="modal-stat-label">Area</div>
+        <div class="modal-stat-val" id="modal-area">—</div>
+      </div>
+      <div class="modal-stat">
+        <div class="modal-stat-label">Distance</div>
+        <div class="modal-stat-val" id="modal-dist">—</div>
+      </div>
+      <div class="modal-stat">
+        <div class="modal-stat-label">Duration</div>
+        <div class="modal-stat-val" id="modal-dur">—</div>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-btn-cancel" onclick="closeClaimModal()">Dismiss</button>
+      <button class="modal-btn-claim" id="modal-confirm-btn" onclick="confirmClaim()">Confirm Claim</button>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY PANEL -->
+<div id="history-panel" onclick="this.classList.remove('open')">
+  <div class="history-card" onclick="event.stopPropagation()">
+    <div class="history-title">
+      Run History
+      <div class="history-close" onclick="document.getElementById('history-panel').classList.remove('open')">✕</div>
+    </div>
+    <div id="history-list"></div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<script>
+/* ══════════════════════════════════════════════════════════
+   DATABASE (localStorage-based in-browser persistence)
+══════════════════════════════════════════════════════════ */
+const DB = {
+  // Users table
+  users: {
+    alice: { password: 'alice123', email: 'alice@example.com', color: 0, totalKm: 12.4, runs: 5 },
+    bob:   { password: 'bob123',   email: 'bob@example.com',   color: 1, totalKm: 8.2,  runs: 3 },
+    carol: { password: 'carol123', email: 'carol@example.com', color: 2, totalKm: 19.7, runs: 8 },
+  },
+
+  // Territories table
+  territories: [],
+
+  // Run history table
+  history: [],
+
+  // User-created accounts
+  customUsers: {},
+
+  load() {
+    const t = localStorage.getItem('runopoly_territories');
+    const h = localStorage.getItem('runopoly_history');
+    const u = localStorage.getItem('runopoly_users');
+    if (t) this.territories = JSON.parse(t);
+    if (h) this.history = JSON.parse(h);
+    if (u) {
+      const custom = JSON.parse(u);
+      this.customUsers = custom;
+      Object.assign(this.users, custom);
+    }
+    // Seed some demo territories if empty
+    if (this.territories.length === 0) this.seedTerritories();
+  },
+
+  save() {
+    localStorage.setItem('runopoly_territories', JSON.stringify(this.territories));
+    localStorage.setItem('runopoly_history',     JSON.stringify(this.history));
+    localStorage.setItem('runopoly_users',       JSON.stringify(this.customUsers));
+  },
+
+  seedTerritories() {
+    // Pre-seed some territories for demo — small polygons near London
+    const base = [51.505, -0.09];
+    const seed = [
+      { owner: 'alice', colorIdx: 0, coords: offsetPoly(base, 0.002, 0.003, 0.5) },
+      { owner: 'bob',   colorIdx: 1, coords: offsetPoly(base, 0.005, -0.002, 0.3) },
+      { owner: 'carol', colorIdx: 2, coords: offsetPoly(base, -0.003, 0.004, 0.4) },
+      { owner: 'bob',   colorIdx: 1, coords: offsetPoly(base, -0.005, -0.005, 0.35) },
+    ];
+    seed.forEach((s, i) => {
+      this.territories.push({
+        id: 'demo_' + i,
+        owner: s.owner,
+        colorIdx: s.colorIdx,
+        coords: s.coords,
+        area: calcPolygonArea(s.coords),
+        claimedAt: Date.now() - (i * 3600000),
+        distance: (Math.random() * 3 + 0.5).toFixed(2),
+        duration: Math.floor(Math.random() * 1800 + 600),
+      });
+    });
+    this.save();
+  },
+
+  getTerritory(id) {
+    return this.territories.find(t => t.id === id);
+  },
+
+  addTerritory(t) {
+    this.territories.push(t);
+    this.save();
+  },
+
+  updateOwner(id, newOwner, colorIdx) {
+    const t = this.territories.find(t => t.id === id);
+    if (t) { t.owner = newOwner; t.colorIdx = colorIdx; this.save(); }
+  },
+
+  addHistory(run) {
+    this.history.unshift(run);
+    this.save();
+  },
+};
+
+/* ── Geometry helpers ──────────────────────────────────────── */
+function offsetPoly(base, dlat, dlng, scale) {
+  const pts = 8;
+  const coords = [];
+  for (let i = 0; i < pts; i++) {
+    const angle = (i / pts) * 2 * Math.PI;
+    coords.push([
+      base[0] + dlat + Math.sin(angle) * scale * 0.002,
+      base[1] + dlng + Math.cos(angle) * scale * 0.002,
+    ]);
+  }
+  return coords;
+}
+
+// Shoelace formula → area in m²
+function calcPolygonArea(coords) {
+  let area = 0;
+  const n = coords.length;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const xi = coords[i][1] * (Math.PI / 180) * 6371000 * Math.cos(coords[i][0] * Math.PI / 180);
+    const yi = coords[i][0] * (Math.PI / 180) * 6371000;
+    const xj = coords[j][1] * (Math.PI / 180) * 6371000 * Math.cos(coords[j][0] * Math.PI / 180);
+    const yj = coords[j][0] * (Math.PI / 180) * 6371000;
+    area += xi * yj - xj * yi;
+  }
+  return Math.abs(area / 2);
+}
+
+// Haversine distance in km
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// Check if point is inside polygon (ray casting)
+function pointInPolygon(point, polygon) {
+  const [px, py] = point;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [xi, yi] = polygon[i];
+    const [xj, yj] = polygon[j];
+    const intersect = ((yi > py) !== (yj > py)) &&
+      (px < (xj - xi) * (py - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+// Check if closed loop: start & end within threshold metres
+function isClosedLoop(coords, thresholdM = 50) {
+  if (coords.length < 4) return false;
+  const first = coords[0];
+  const last  = coords[coords.length - 1];
+  const dist  = haversine(first[0], first[1], last[0], last[1]) * 1000;
+  return dist <= thresholdM;
+}
+
+// Validate GPS point (reject teleportation / unrealistic speeds)
+function validateGPSPoint(prev, next, maxSpeedMs = 12) {
+  if (!prev) return true;
+  const dist = haversine(prev.lat, prev.lng, next.lat, next.lng) * 1000;
+  const dt   = (next.timestamp - prev.timestamp) / 1000;
+  if (dt <= 0) return false;
+  return (dist / dt) <= maxSpeedMs;
+}
+
+// Check territory overlap with existing territories
+function checkOverlap(newCoords) {
+  const centroid = [
+    newCoords.reduce((s, c) => s + c[0], 0) / newCoords.length,
+    newCoords.reduce((s, c) => s + c[1], 0) / newCoords.length,
+  ];
+  for (const t of DB.territories) {
+    if (pointInPolygon(centroid, t.coords)) return t;
+  }
+  return null;
+}
+
+/* ══════════════════════════════════════════════════════════
+   AUTH
+══════════════════════════════════════════════════════════ */
+const USER_COLORS = [
+  '#4F8EF7','#FF6B6B','#00D68F','#FFB020',
+  '#B8FF00','#C084FC','#22D3EE','#F97316'
+];
+
+let currentUser = null;
+
+function switchTab(tab) {
+  document.getElementById('auth-error').style.display = 'none';
+  document.querySelectorAll('.auth-tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'));
+  });
+  document.getElementById('login-form').classList.toggle('hidden', tab !== 'login');
+  document.getElementById('register-form').classList.toggle('hidden', tab !== 'register');
+  document.getElementById('auth-title').textContent = tab === 'login' ? 'Welcome back' : 'Create account';
+}
+
+function authError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+function handleLogin() {
+  const username = document.getElementById('login-user').value.trim();
+  const password = document.getElementById('login-pass').value;
+  if (!username || !password) { authError('Please fill in all fields.'); return; }
+  const user = DB.users[username];
+  if (!user || user.password !== password) { authError('Invalid username or password.'); return; }
+  loginAs(username);
+}
+
+function handleRegister() {
+  const username = document.getElementById('reg-user').value.trim();
+  const email    = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-pass').value;
+  if (!username || !email || !password) { authError('Please fill in all fields.'); return; }
+  if (username.length < 3) { authError('Username must be at least 3 characters.'); return; }
+  if (password.length < 6) { authError('Password must be at least 6 characters.'); return; }
+  if (DB.users[username]) { authError('Username already taken.'); return; }
+  const colorIdx = Object.keys(DB.users).length % USER_COLORS.length;
+  DB.users[username] = { password, email, color: colorIdx, totalKm: 0, runs: 0 };
+  DB.customUsers[username] = DB.users[username];
+  DB.save();
+  toast('Account created! Welcome, ' + username, 'success');
+  loginAs(username);
+}
+
+function loginAs(username) {
+  currentUser = username;
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  document.getElementById('user-name-display').textContent = username;
+  const colorIdx = DB.users[username].color;
+  document.getElementById('user-color-dot').style.background = USER_COLORS[colorIdx];
+  updateTopbarStats();
+  renderTerritories();
+  renderLeaderboard();
+  renderTerritoryList();
+  toast('Welcome back, ' + username + '! 🏃', 'success');
+}
+
+function logout() {
+  currentUser = null;
+  stopRunInternal(false);
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+}
+
+/* ══════════════════════════════════════════════════════════
+   MAP SETUP
+══════════════════════════════════════════════════════════ */
+let map, runPolyline, runDot, territoriesLayer;
+let mapCenter = [51.505, -0.09];
+
+function initMap() {
+  map = L.map('map', {
+    center: mapCenter,
+    zoom: 15,
+    zoomControl: true,
+  });
+
+  // Dark tile layer
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; CartoDB',
+    subdomains: 'abcd',
+    maxZoom: 19,
+  }).addTo(map);
+
+  territoriesLayer = L.layerGroup().addTo(map);
+}
+
+function renderTerritories() {
+  if (!map) return;
+  territoriesLayer.clearLayers();
+  DB.territories.forEach(t => renderTerritory(t));
+}
+
+function renderTerritory(t) {
+  const color = USER_COLORS[t.colorIdx];
+  const poly = L.polygon(t.coords, {
+    color,
+    fillColor: color,
+    fillOpacity: 0.3,
+    weight: 2,
+    opacity: 0.8,
+  });
+  poly.on('click', () => {
+    const area = (t.area / 10000).toFixed(2);
+    const dt = new Date(t.claimedAt);
+    poly.bindPopup(
+      `<div style="font-family:'Space Grotesk',sans-serif;color:#E8EAF0;background:#141720;padding:4px">
+        <b style="color:${color}">${t.owner}</b><br/>
+        ${area} ha · ${new Date(t.claimedAt).toLocaleDateString()}<br/>
+        <span style="font-size:11px;color:#6B7280">${t.distance} km · ${formatDuration(t.duration)}</span>
+      </div>`
+    ).openPopup();
+  });
+  territoriesLayer.addLayer(poly);
+}
+
+function getColorVarName(idx) {
+  return `--c${idx}`;
+}
+
+/* ══════════════════════════════════════════════════════════
+   RUN SESSION
+══════════════════════════════════════════════════════════ */
+let isRunning = false;
+let gpsPoints = [];        // { lat, lng, timestamp }
+let runStartTime = null;
+let runInterval = null;
+let geoWatchId = null;
+let runPathLayer = null;
+let runDotMarker = null;
+let simulatedRunData = null;
+
+function startRun() {
+  if (isRunning) return;
+  isRunning = true;
+  gpsPoints = [];
+  runStartTime = Date.now();
+  document.getElementById('btn-start').style.display = 'none';
+  document.getElementById('btn-stop').style.display = 'block';
+  document.getElementById('btn-sim').disabled = true;
+  document.getElementById('status-dot').classList.add('running');
+  document.getElementById('status-text').textContent = 'Tracking GPS...';
+  document.getElementById('gps-empty').style.display = 'none';
+
+  // Clear previous path
+  if (runPathLayer) { map.removeLayer(runPathLayer); runPathLayer = null; }
+  if (runDotMarker) { map.removeLayer(runDotMarker); runDotMarker = null; }
+
+  // Timer
+  runInterval = setInterval(updateRunMetrics, 1000);
+
+  // Attempt real GPS
+  if (navigator.geolocation) {
+    geoWatchId = navigator.geolocation.watchPosition(
+      pos => addGPSPoint(pos.coords.latitude, pos.coords.longitude),
+      err => {
+        // GPS unavailable: use simulated movement
+        toast('GPS unavailable — using simulated data', 'warn');
+        startSimulatedTracking();
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 8000 }
+    );
+  } else {
+    toast('GPS not supported — using simulated data', 'warn');
+    startSimulatedTracking();
+  }
+
+  toast('Run started! 🏃 GPS tracking active.', 'success');
+}
+
+let simTrackInterval = null;
+let simStep = 0;
+
+function startSimulatedTracking() {
+  // Simulate a runner moving in a rough loop around the map center
+  simStep = 0;
+  simTrackInterval = setInterval(() => {
+    if (!isRunning) { clearInterval(simTrackInterval); return; }
+    const progress = (simStep % 120) / 120;
+    const angle = progress * 2 * Math.PI;
+    const radius = 0.0015;
+    const lat = mapCenter[0] + Math.sin(angle) * radius * 1.2;
+    const lng = mapCenter[1] + Math.cos(angle) * radius;
+    addGPSPoint(lat, lng);
+    simStep++;
+  }, 1000);
+}
+
+function addGPSPoint(lat, lng) {
+  const point = { lat, lng, timestamp: Date.now() };
+  const prev = gpsPoints[gpsPoints.length - 1];
+
+  // GPS validation: reject unrealistic jumps
+  if (!validateGPSPoint(prev, point)) {
+    console.warn('GPS point rejected — unrealistic speed');
+    return;
+  }
+
+  gpsPoints.push(point);
+  renderGPSPoint(point, gpsPoints.length);
+  updateRunPath();
+}
+
+function renderGPSPoint(pt, idx) {
+  const log = document.getElementById('gps-log');
+  const el = document.createElement('div');
+  el.className = 'gps-point';
+  const t = new Date(pt.timestamp);
+  el.innerHTML = `
+    <span class="gps-idx">${idx}</span>
+    <span class="gps-coord">${pt.lat.toFixed(6)}, ${pt.lng.toFixed(6)}</span>
+    <span class="gps-time">${t.toTimeString().slice(0,8)}</span>
+  `;
+  log.appendChild(el);
+  log.scrollTop = log.scrollHeight;
+
+  // Update metrics
+  document.getElementById('metric-pts').textContent = idx;
+}
+
+function updateRunPath() {
+  const latlngs = gpsPoints.map(p => [p.lat, p.lng]);
+  if (runPathLayer) { map.removeLayer(runPathLayer); }
+  const color = USER_COLORS[DB.users[currentUser].color];
+  runPathLayer = L.polyline(latlngs, {
+    color, weight: 3, opacity: 0.9, dashArray: '8 5',
+  }).addTo(map);
+
+  // Moving dot
+  if (runDotMarker) map.removeLayer(runDotMarker);
+  const last = latlngs[latlngs.length - 1];
+  const dotIcon = L.divIcon({
+    className: '',
+    html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 0 8px ${color};"></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+  });
+  runDotMarker = L.marker(last, { icon: dotIcon }).addTo(map);
+
+  if (gpsPoints.length <= 3) map.setView(last, 16);
+}
+
+function updateRunMetrics() {
+  const elapsed = (Date.now() - runStartTime) / 1000;
+  document.getElementById('metric-time').textContent = formatDuration(elapsed);
+
+  // Calculate total distance
+  let totalKm = 0;
+  for (let i = 1; i < gpsPoints.length; i++) {
+    totalKm += haversine(gpsPoints[i-1].lat, gpsPoints[i-1].lng, gpsPoints[i].lat, gpsPoints[i].lng);
+  }
+  document.getElementById('metric-dist').textContent = totalKm.toFixed(2) + ' km';
+
+  // Pace
+  if (totalKm > 0 && elapsed > 30) {
+    const paceSecPerKm = elapsed / totalKm;
+    const m = Math.floor(paceSecPerKm / 60);
+    const s = Math.floor(paceSecPerKm % 60);
+    document.getElementById('metric-pace').textContent = `${m}:${s.toString().padStart(2,'0')}`;
+  }
+}
+
+function stopRun() {
+  if (!isRunning) return;
+  stopRunInternal(true);
+}
+
+function stopRunInternal(analyze) {
+  isRunning = false;
+  clearInterval(runInterval);
+  clearInterval(simTrackInterval);
+  if (geoWatchId !== null) {
+    navigator.geolocation.clearWatch(geoWatchId);
+    geoWatchId = null;
+  }
+
+  document.getElementById('btn-start').style.display = 'block';
+  document.getElementById('btn-stop').style.display = 'none';
+  document.getElementById('btn-sim').disabled = false;
+  document.getElementById('status-dot').classList.remove('running');
+  document.getElementById('status-text').textContent = 'Ready to run';
+
+  if (!analyze || gpsPoints.length < 4) {
+    if (analyze) toast('Route too short — need at least 4 GPS points.', 'warn');
+    return;
+  }
+
+  analyzeRoute();
+}
+
+/* ══════════════════════════════════════════════════════════
+   ROUTE ANALYSIS & TERRITORY CLAIM
+══════════════════════════════════════════════════════════ */
+let pendingClaim = null;
+
+function analyzeRoute() {
+  const coords = gpsPoints.map(p => [p.lat, p.lng]);
+
+  // 1. Validate GPS data
+  if (coords.length < 4) {
+    toast('Not enough GPS points to analyze.', 'warn'); return;
+  }
+
+  // 2. Detect closed loop
+  if (!isClosedLoop(coords)) {
+    toast('⚠ Route not a closed loop — start and end must be within 50m.', 'warn');
+
+    // Save open-route history anyway
+    const elapsed = (Date.now() - runStartTime) / 1000;
+    let dist = 0;
+    for (let i = 1; i < gpsPoints.length; i++)
+      dist += haversine(gpsPoints[i-1].lat, gpsPoints[i-1].lng, gpsPoints[i].lat, gpsPoints[i].lng);
+    DB.addHistory({ type: 'open', user: currentUser, dist: dist.toFixed(2), duration: elapsed, date: Date.now() });
+    DB.users[currentUser].runs++;
+    DB.users[currentUser].totalKm = +(+DB.users[currentUser].totalKm + dist).toFixed(2);
+    DB.save();
+    updateTopbarStats();
+    return;
+  }
+
+  // 3. Calculate polygon area (Shoelace)
+  const area = calcPolygonArea(coords);
+  const areaHa = (area / 10000).toFixed(2);
+
+  // 4. Calculate run stats
+  let totalKm = 0;
+  for (let i = 1; i < coords.length; i++)
+    totalKm += haversine(coords[i-1][0], coords[i-1][1], coords[i][0], coords[i][1]);
+  const elapsed = (Date.now() - runStartTime) / 1000;
+
+  // 5. Check overlap with existing territories
+  const overlap = checkOverlap(coords);
+
+  // 6. Prepare pending claim and show modal
+  pendingClaim = {
+    coords, area, totalKm, elapsed,
+    existingTerritory: overlap,
+    colorIdx: DB.users[currentUser].color,
+  };
+
+  document.getElementById('modal-area').textContent = areaHa + ' ha';
+  document.getElementById('modal-dist').textContent = totalKm.toFixed(2) + ' km';
+  document.getElementById('modal-dur').textContent = formatDuration(elapsed);
+
+  if (overlap && overlap.owner !== currentUser) {
+    // Reclaim scenario
+    document.getElementById('modal-icon').textContent = '⚔️';
+    document.getElementById('modal-title').textContent = 'Territory Contested!';
+    document.getElementById('modal-sub').textContent = `This area belongs to ${overlap.owner}. Claim it as yours?`;
+    document.getElementById('modal-confirm-btn').textContent = 'Reclaim Territory';
+  } else if (overlap && overlap.owner === currentUser) {
+    // Already own it
+    document.getElementById('modal-icon').textContent = '✅';
+    document.getElementById('modal-title').textContent = 'Already Yours!';
+    document.getElementById('modal-sub').textContent = 'You already own this territory. Run data saved.';
+    document.getElementById('modal-confirm-btn').textContent = 'OK';
+  } else {
+    // New territory
+    document.getElementById('modal-icon').textContent = '🎉';
+    document.getElementById('modal-title').textContent = 'New Territory!';
+    document.getElementById('modal-sub').textContent = 'Unclaimed land detected. Claim it?';
+    document.getElementById('modal-confirm-btn').textContent = 'Claim Territory';
+  }
+
+  document.getElementById('claim-modal').classList.add('open');
+}
+
+function confirmClaim() {
+  if (!pendingClaim) return;
+  const { coords, area, totalKm, elapsed, existingTerritory, colorIdx } = pendingClaim;
+
+  let claimed = false;
+  let reclaimed = false;
+
+  if (existingTerritory && existingTerritory.owner === currentUser) {
+    // Already own — just save stats
+  } else if (existingTerritory && existingTerritory.owner !== currentUser) {
+    // Reclaim
+    DB.updateOwner(existingTerritory.id, currentUser, colorIdx);
+    reclaimed = true;
+    claimed = true;
+  } else {
+    // New territory
+    const id = 'territory_' + Date.now();
+    DB.addTerritory({
+      id, owner: currentUser, colorIdx,
+      coords, area,
+      claimedAt: Date.now(),
+      distance: totalKm.toFixed(2),
+      duration: elapsed,
+    });
+    claimed = true;
+  }
+
+  // Update user stats
+  DB.users[currentUser].runs++;
+  DB.users[currentUser].totalKm = +(+DB.users[currentUser].totalKm + totalKm).toFixed(2);
+  DB.save();
+
+  // Add history record
+  DB.addHistory({
+    type: claimed ? (reclaimed ? 'reclaimed' : 'claimed') : 'run',
+    user: currentUser,
+    dist: totalKm.toFixed(2),
+    duration: elapsed,
+    area: (area / 10000).toFixed(2),
+    date: Date.now(),
+  });
+
+  closeClaimModal();
+  updateTopbarStats();
+  renderTerritories();
+  renderLeaderboard();
+  renderTerritoryList();
+
+  if (claimed && reclaimed) toast('⚔️ Territory reclaimed!', 'warn');
+  else if (claimed)         toast('🎉 Territory claimed! ' + (area/10000).toFixed(2) + ' ha is yours.', 'success');
+  else                      toast('✅ Run saved to your history.', 'info');
+
+  pendingClaim = null;
+}
+
+function closeClaimModal() {
+  document.getElementById('claim-modal').classList.remove('open');
+  pendingClaim = null;
+}
+
+/* ══════════════════════════════════════════════════════════
+   SIMULATION (pre-made GPS loop)
+══════════════════════════════════════════════════════════ */
+function simulateRun() {
+  if (isRunning) return;
+
+  // Generate a clean loop of points around the map center
+  const numPoints = 60;
+  const radius = 0.0018 + Math.random() * 0.0008;
+  const offsetLat = (Math.random() - 0.5) * 0.003;
+  const offsetLng = (Math.random() - 0.5) * 0.003;
+  const points = [];
+
+  for (let i = 0; i <= numPoints; i++) {
+    const angle = (i / numPoints) * 2 * Math.PI;
+    const jitterLat = (Math.random() - 0.5) * 0.0001;
+    const jitterLng = (Math.random() - 0.5) * 0.0001;
+    points.push({
+      lat: mapCenter[0] + offsetLat + Math.sin(angle) * radius * 1.3 + jitterLat,
+      lng: mapCenter[1] + offsetLng + Math.cos(angle) * radius + jitterLng,
+      timestamp: Date.now() + i * 3000,
+    });
+  }
+  // Close the loop
+  points[points.length - 1].lat = points[0].lat + (Math.random() - 0.5) * 0.00002;
+  points[points.length - 1].lng = points[0].lng + (Math.random() - 0.5) * 0.00002;
+
+  gpsPoints = points;
+  runStartTime = Date.now() - points.length * 3000;
+
+  // Render in GPS log
+  document.getElementById('gps-empty').style.display = 'none';
+  document.getElementById('gps-log').innerHTML = '';
+  points.forEach((p, i) => renderGPSPoint(p, i + 1));
+
+  const color = USER_COLORS[DB.users[currentUser].color];
+  if (runPathLayer) map.removeLayer(runPathLayer);
+  const latlngs = points.map(p => [p.lat, p.lng]);
+  runPathLayer = L.polyline(latlngs, { color, weight: 3, opacity: 0.9 }).addTo(map);
+  map.fitBounds(runPathLayer.getBounds(), { padding: [40, 40] });
+
+  let dist = 0;
+  for (let i = 1; i < points.length; i++)
+    dist += haversine(points[i-1].lat, points[i-1].lng, points[i].lat, points[i].lng);
+  document.getElementById('metric-dist').textContent = dist.toFixed(2) + ' km';
+  document.getElementById('metric-pts').textContent = points.length;
+  document.getElementById('metric-time').textContent = formatDuration(points.length * 3);
+
+  toast('Simulated GPS loop loaded. Press "End Run & Claim" to analyze.', 'info');
+
+  // Set so stopRun can trigger analysis
+  document.getElementById('btn-start').style.display = 'none';
+  document.getElementById('btn-stop').style.display = 'block';
+  isRunning = true;
+  runInterval = setInterval(updateRunMetrics, 1000);
+}
+
+/* ══════════════════════════════════════════════════════════
+   UI UPDATES
+══════════════════════════════════════════════════════════ */
+function updateTopbarStats() {
+  const u = DB.users[currentUser];
+  const myTerritories = DB.territories.filter(t => t.owner === currentUser).length;
+  document.getElementById('stat-territories').textContent = myTerritories;
+  document.getElementById('stat-km').textContent = (u.totalKm || 0).toFixed(1);
+  document.getElementById('stat-runs').textContent = u.runs || 0;
+}
+
+function renderLeaderboard() {
+  // Count territories per user
+  const counts = {};
+  DB.territories.forEach(t => { counts[t.owner] = (counts[t.owner] || 0) + 1; });
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const container = document.getElementById('lb-rows');
+  container.innerHTML = sorted.map(([name, count], i) => {
+    const u = DB.users[name];
+    const color = u ? USER_COLORS[u.color] : USER_COLORS[0];
+    return `
+      <div class="lb-row">
+        <div class="lb-rank">${i + 1}</div>
+        <div class="lb-dot" style="background:${color}"></div>
+        <div class="lb-name">${name}</div>
+        <div class="lb-count">${count}</div>
+      </div>
+    `;
+  }).join('') || '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">No territories yet</div>';
+}
+
+function renderTerritoryList() {
+  const list = document.getElementById('territory-list');
+  list.innerHTML = DB.territories.map(t => {
+    const color = USER_COLORS[t.colorIdx];
+    const area = (t.area / 10000).toFixed(2);
+    return `
+      <div class="territory-item" onclick="focusTerritory('${t.id}')">
+        <div class="territory-header">
+          <div class="territory-color" style="background:${color}"></div>
+          <div class="territory-name">${t.owner}</div>
+          <div class="territory-area">${area} ha</div>
+        </div>
+        <div class="territory-owner">${new Date(t.claimedAt).toLocaleDateString()}</div>
+        <div class="territory-area-big">${t.distance} km · ${formatDuration(t.duration)}</div>
+      </div>
+    `;
+  }).join('') || '<div style="padding:20px;font-size:13px;color:var(--text-muted);">No territories claimed yet</div>';
+}
+
+function focusTerritory(id) {
+  const t = DB.getTerritory(id);
+  if (!t || !map) return;
+  const poly = L.polygon(t.coords);
+  map.fitBounds(poly.getBounds(), { padding: [40, 40] });
+}
+
+function toggleTerritoriesPanel() {
+  const panel = document.getElementById('territories-panel');
+  const btn = document.getElementById('btn-toggle-terr');
+  panel.classList.toggle('open');
+  btn.classList.toggle('active');
+}
+
+function toggleLeaderboard() {
+  const panel = document.getElementById('leaderboard-panel');
+  const btn = document.getElementById('btn-toggle-lb');
+  panel.classList.toggle('visible');
+  btn.classList.toggle('active');
+}
+
+function centerMap() {
+  if (gpsPoints.length > 0) {
+    const last = gpsPoints[gpsPoints.length - 1];
+    map.setView([last.lat, last.lng], 16);
+  } else {
+    map.setView(mapCenter, 15);
+  }
+}
+
+function showHistory() {
+  const list = document.getElementById('history-list');
+  const userHistory = DB.history.filter(h => h.user === currentUser);
+  list.innerHTML = userHistory.length > 0 ? userHistory.map(h => {
+    const icon = h.type === 'claimed' ? '🏆' : h.type === 'reclaimed' ? '⚔️' : '🏃';
+    const badge = h.type === 'claimed' ? 'Claimed' : h.type === 'reclaimed' ? 'Reclaimed' : 'Open Run';
+    const badgeClass = h.type === 'reclaimed' ? 'reclaimed' : '';
+    return `
+      <div class="history-row">
+        <div class="history-icon">${icon}</div>
+        <div class="history-info">
+          <div class="history-info-title">${h.dist} km run · ${formatDuration(h.duration)}</div>
+          <div class="history-info-sub">${new Date(h.date).toLocaleString()}${h.area ? ' · ' + h.area + ' ha' : ''}</div>
+        </div>
+        <div class="history-badge ${badgeClass}">${badge}</div>
+      </div>
+    `;
+  }).join('') : '<p style="color:var(--text-muted);font-size:14px;text-align:center;padding:24px;">No runs yet — start moving!</p>';
+  document.getElementById('history-panel').classList.add('open');
+}
+
+/* ══════════════════════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════════════════════ */
+function toast(msg, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+/* ══════════════════════════════════════════════════════════
+   UTILS
+══════════════════════════════════════════════════════════ */
+function formatDuration(seconds) {
+  const s = Math.floor(seconds);
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  if (h > 0) return `${h}:${(m % 60).toString().padStart(2,'0')}:${(s % 60).toString().padStart(2,'0')}`;
+  return `${(m % 60).toString().padStart(2,'0')}:${(s % 60).toString().padStart(2,'0')}`;
+}
+
+/* ══════════════════════════════════════════════════════════
+   KEYBOARD SHORTCUTS
+══════════════════════════════════════════════════════════ */
+document.addEventListener('keydown', e => {
+  if (!currentUser) return;
+  if (e.key === 'Escape') {
+    closeClaimModal();
+    document.getElementById('history-panel').classList.remove('open');
+  }
+});
+
+/* ══════════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════════ */
+DB.load();
+initMap();
+
+// Try to geolocate for map center
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(pos => {
+    mapCenter = [pos.coords.latitude, pos.coords.longitude];
+    map.setView(mapCenter, 15);
+    renderTerritories(); // Re-render after centering
+  }, () => {});
+}
+</script>
+</body>
+</html>
